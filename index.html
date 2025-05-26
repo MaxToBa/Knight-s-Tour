@@ -51,6 +51,7 @@
       font-size: 20px;
       cursor: pointer;
       transition: background 0.2s;
+      position: relative;
     }
     .cell.visited {
       background-color: #ffd1dc;
@@ -58,6 +59,13 @@
     .cell.knight {
       background-color: #ffb3c6;
       font-weight: bold;
+    }
+    .step-number {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 14px;
+      color: #333;
     }
   </style>
 </head>
@@ -85,7 +93,7 @@
       </select>
     </label>
     <button onclick="startGame()">เริ่มเกม</button>
-    <button onclick="resetGame()">รีเซ็ต</button>
+    <button onclick="resetBoard()">รีเซ็ต</button>
   </div>
   <div id="timer"></div>
   <div id="board"></div>
@@ -93,9 +101,10 @@
   <audio id="moveSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
   <script>
     let boardSize = 8;
-    let knightPos = { x: 0, y: 0 };
+    let knightPos = null;
     let timerInterval = null;
     let timeLeft = 0;
+    let moveCount = 1;
     const board = document.getElementById("board");
     const timerDisplay = document.getElementById("timer");
     const moveSound = document.getElementById("moveSound");
@@ -118,7 +127,8 @@
       } else {
         timerDisplay.textContent = "";
       }
-      knightPos = { x: 0, y: 0 };
+      knightPos = null;
+      moveCount = 1;
       createBoard(boardSize);
     }
 
@@ -128,9 +138,10 @@
       timerDisplay.textContent = `เวลา: ${min}:${sec.toString().padStart(2, '0')}`;
     }
 
-    function resetGame() {
-      clearInterval(timerInterval);
-      startGame();
+    function resetBoard() {
+      createBoard(boardSize);
+      knightPos = null;
+      moveCount = 1;
     }
 
     function createBoard(size) {
@@ -155,11 +166,11 @@
         cell.classList.remove("knight");
         const x = parseInt(cell.dataset.x);
         const y = parseInt(cell.dataset.y);
-        if (x === knightPos.x && y === knightPos.y) {
+        if (knightPos && x === knightPos.x && y === knightPos.y) {
           cell.classList.add("knight");
-          cell.textContent = "♘";
-        } else {
-          cell.textContent = "";
+          cell.innerHTML = "♘";
+        } else if (!cell.classList.contains("visited")) {
+          cell.innerHTML = "";
         }
       });
     }
@@ -167,8 +178,18 @@
     function onCellClick(e) {
       const x = parseInt(e.currentTarget.dataset.x);
       const y = parseInt(e.currentTarget.dataset.y);
+      if (knightPos === null) {
+        knightPos = { x, y };
+        updateKnightPosition();
+        return;
+      }
       if (isKnightMove(knightPos.x, knightPos.y, x, y)) {
-        document.querySelector(`.cell[data-x='${knightPos.x}'][data-y='${knightPos.y}']`).classList.add("visited");
+        const prevCell = document.querySelector(`.cell[data-x='${knightPos.x}'][data-y='${knightPos.y}']`);
+        prevCell.classList.add("visited");
+        const stepLabel = document.createElement("div");
+        stepLabel.className = "step-number";
+        stepLabel.textContent = moveCount++;
+        prevCell.appendChild(stepLabel);
         knightPos = { x, y };
         updateKnightPosition();
         moveSound.play();
@@ -193,7 +214,8 @@
         const nx = knightPos.x + dx;
         const ny = knightPos.y + dy;
         return nx >= 0 && ny >= 0 && nx < boardSize && ny < boardSize &&
-          !document.querySelector(`.cell[data-x='${nx}'][data-y='${ny}']`).classList.contains("visited");
+          !document.querySelector(`.cell[data-x='${nx}'][data-y='${ny}']`).classList.contains("visited") &&
+          !(knightPos.x === nx && knightPos.y === ny);
       });
     }
 
